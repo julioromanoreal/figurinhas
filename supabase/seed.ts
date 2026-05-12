@@ -39,7 +39,8 @@ async function seed() {
 
   const { data: existingStickers } = await supabase
     .from("stickers")
-    .select("code, category_id");
+    .select("code, category_id")
+    .limit(5000);
 
   const existingStickerSet = new Set(
     (existingStickers ?? []).map((s) => `${s.category_id}:${s.code}`)
