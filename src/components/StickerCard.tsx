@@ -13,20 +13,27 @@ interface Props {
 
 export default function StickerCard({ sticker, collectionSticker, onToggle, onDuplicateChange, readOnly }: Props) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress = useRef(false);
+
   const isOwned = collectionSticker?.status === "owned";
   const duplicateCount = collectionSticker?.duplicate_count ?? 0;
   const hasDuplicates = isOwned && duplicateCount > 0;
 
   const handlePointerDown = useCallback(() => {
-    if (readOnly || !isOwned) return;
+    if (readOnly) return;
+    didLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
-      const current = collectionSticker?.duplicate_count ?? 0;
-      const next = current > 0 ? 0 : 1;
-      onDuplicateChange(sticker.id, next);
+      didLongPress.current = true;
+      if (!isOwned) return;
+      if (duplicateCount > 0) {
+        onDuplicateChange(sticker.id, duplicateCount - 1);
+      } else {
+        onToggle(sticker.id, collectionSticker);
+      }
     }, 500);
-  }, [readOnly, isOwned, collectionSticker, sticker.id, onDuplicateChange]);
+  }, [readOnly, isOwned, duplicateCount, collectionSticker, sticker.id, onToggle, onDuplicateChange]);
 
-  const handlePointerUp = useCallback(() => {
+  const cancelLongPress = useCallback(() => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
@@ -35,30 +42,23 @@ export default function StickerCard({ sticker, collectionSticker, onToggle, onDu
 
   const handleClick = useCallback(() => {
     if (readOnly) return;
-    onToggle(sticker.id, collectionSticker);
-  }, [readOnly, onToggle, sticker.id, collectionSticker]);
-
-  const handleDuplicateClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (readOnly || !isOwned) return;
-    const current = collectionSticker?.duplicate_count ?? 0;
-    onDuplicateChange(sticker.id, current + 1);
-  }, [readOnly, isOwned, collectionSticker, sticker.id, onDuplicateChange]);
-
-  const handleDuplicateRightClick = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (readOnly || !isOwned) return;
-    const current = collectionSticker?.duplicate_count ?? 0;
-    onDuplicateChange(sticker.id, Math.max(0, current - 1));
-  }, [readOnly, isOwned, collectionSticker, sticker.id, onDuplicateChange]);
+    if (didLongPress.current) {
+      didLongPress.current = false;
+      return;
+    }
+    if (!isOwned) {
+      onToggle(sticker.id, collectionSticker);
+    } else {
+      onDuplicateChange(sticker.id, duplicateCount + 1);
+    }
+  }, [readOnly, isOwned, duplicateCount, collectionSticker, sticker.id, onToggle, onDuplicateChange]);
 
   return (
     <button
       onClick={handleClick}
       onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
+      onPointerUp={cancelLongPress}
+      onPointerLeave={cancelLongPress}
       className={`
         relative flex flex-col items-center justify-center rounded-xl border-2 transition-all
         select-none touch-manipulation
@@ -78,11 +78,7 @@ export default function StickerCard({ sticker, collectionSticker, onToggle, onDu
       </span>
 
       {hasDuplicates && (
-        <span
-          onClick={handleDuplicateClick}
-          onContextMenu={handleDuplicateRightClick}
-          className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center leading-none shadow"
-        >
+        <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center leading-none shadow">
           +{duplicateCount}
         </span>
       )}
