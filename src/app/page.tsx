@@ -18,9 +18,10 @@ export default async function Home() {
     .select("collection_id, collections(id, display_name, albums(name, year), profiles(display_name))")
     .eq("user_id", user.id);
 
-  if (!collections || collections.length === 0) {
-    redirect("/collections/new");
-  }
+  if (!collections || collections.length === 0) redirect("/collections/new");
 
-  redirect(`/collections/${collections[0].id}`);
+  const firstId = collections[0]?.id;
+  if (!firstId) redirect("/collections/new");
+
+  redirect(`/collections/${firstId}`);
 }

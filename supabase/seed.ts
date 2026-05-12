@@ -32,11 +32,11 @@ async function seed() {
 
     const { data: cat, error: catError } = await supabase
       .from("sticker_categories")
-      .upsert({
+      .insert({
         album_id: album.id,
         name: category.name,
         sort_order: catIndex,
-      }, { onConflict: "album_id,name" })
+      })
       .select()
       .single();
 
@@ -54,7 +54,7 @@ async function seed() {
 
     const { error: stickerError } = await supabase
       .from("stickers")
-      .upsert(stickersToInsert, { onConflict: "category_id,code" });
+      .insert(stickersToInsert);
 
     if (stickerError) {
       console.error(`Error inserting stickers for ${category.name}:`, stickerError);

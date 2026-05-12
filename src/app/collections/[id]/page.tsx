@@ -13,13 +13,13 @@ export default async function CollectionPage({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: collection } = await supabase
+  const { data: collection, error: collectionError } = await supabase
     .from("collections")
-    .select("*, albums(*), profiles(*)")
+    .select("*, albums(*)")
     .eq("id", id)
     .single();
 
-  if (!collection) redirect("/");
+  if (collectionError || !collection) redirect("/collections/new");
 
   const isOwner = collection.owner_id === user.id;
   const { data: collaborator } = await supabase
@@ -31,7 +31,7 @@ export default async function CollectionPage({ params }: Props) {
 
   const canEdit = isOwner || (collaborator?.can_edit ?? false);
   const hasAccess = isOwner || !!collaborator;
-  if (!hasAccess) redirect("/");
+  if (!hasAccess) redirect("/collections/new");
 
   const { data: categories } = await supabase
     .from("sticker_categories")

@@ -71,28 +71,31 @@ export default function CollectionClient({
 
     if (!current || current.status === "missing") {
       if (!current) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("collection_stickers")
           .insert({ collection_id: collection.id, sticker_id: stickerId, status: "owned", duplicate_count: 0 })
           .select()
           .single();
+        if (error) console.error("insert error:", error);
         if (data) setCollectionStickers((prev) => [...prev, data]);
       } else {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("collection_stickers")
           .update({ status: "owned" })
           .eq("id", current.id)
           .select()
           .single();
+        if (error) console.error("update error:", error);
         if (data) setCollectionStickers((prev) => prev.map((cs) => cs.id === data.id ? data : cs));
       }
     } else {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("collection_stickers")
         .update({ status: "missing", duplicate_count: 0 })
         .eq("id", current.id)
         .select()
         .single();
+      if (error) console.error("update missing error:", error);
       if (data) setCollectionStickers((prev) => prev.map((cs) => cs.id === data.id ? data : cs));
     }
 
@@ -142,11 +145,13 @@ export default function CollectionClient({
               <div className="font-semibold">{totalOwned}/{stickers.length}</div>
               <div className="text-green-200">{progress.toFixed(0)}%</div>
             </div>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="p-2 rounded-lg hover:bg-green-700 transition-colors relative"
-            >
-              ☰
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="p-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                ☰
+              </button>
               {menuOpen && (
                 <div
                   className="absolute right-0 top-full mt-1 bg-white text-gray-900 rounded-xl shadow-xl border border-gray-100 w-56 z-50 text-sm overflow-hidden"
@@ -202,7 +207,7 @@ export default function CollectionClient({
                   </button>
                 </div>
               )}
-            </button>
+            </div>
           </div>
         </div>
 

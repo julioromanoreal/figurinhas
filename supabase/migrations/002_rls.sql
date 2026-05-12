@@ -39,13 +39,10 @@ create policy "Owners can delete their collections"
 create policy "Collection members can view collaborators"
   on public.collection_collaborators for select
   using (
-    exists (
+    user_id = auth.uid()
+    or exists (
       select 1 from public.collections c
-      where c.id = collection_id
-        and (c.owner_id = auth.uid() or exists (
-          select 1 from public.collection_collaborators cc2
-          where cc2.collection_id = collection_id and cc2.user_id = auth.uid()
-        ))
+      where c.id = collection_id and c.owner_id = auth.uid()
     )
   );
 
