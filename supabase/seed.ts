@@ -11,59 +11,96 @@ async function seed() {
 
   const { data: album, error: albumError } = await supabase
     .from("albums")
-    .upsert({
-      name: "Copa do Mundo FIFA 2026",
-      year: 2026,
-      slug: COPA2026_ALBUM_SLUG,
-      description: "Álbum oficial Panini da Copa do Mundo FIFA 2026 — USA, Canada & Mexico",
-    }, { onConflict: "slug" })
+    .upsert(
+      {
+        name: "Copa do Mundo FIFA 2026",
+        year: 2026,
+        slug: COPA2026_ALBUM_SLUG,
+        description: "Álbum oficial Panini da Copa do Mundo FIFA 2026 — USA, Canada & Mexico",
+      },
+      { onConflict: "slug" }
+    )
     .select()
     .single();
 
   if (albumError) {
-    console.error("Error inserting album:", albumError);
+    console.error("Error upserting album:", albumError);
     process.exit(1);
   }
 
-  console.log("Album created:", album.id);
+  console.log("Album:", album.id);
+
+  const { data: existingCategories } = await supabase
+    .from("sticker_categories")
+    .select("id, name")
+    .eq("album_id", album.id);
+
+  const existingCatMap = new Map((existingCategories ?? []).map((c) => [c.name, c.id]));
+
+  const { data: existingStickers } = await supabase
+    .from("stickers")
+    .select("code, category_id");
+
+  const existingStickerSet = new Set(
+    (existingStickers ?? []).map((s) => `${s.category_id}:${s.code}`)
+  );
+
+  let insertedCategories = 0;
+  let insertedStickers = 0;
+  let skippedStickers = 0;
 
   for (let catIndex = 0; catIndex < COPA2026_CATEGORIES.length; catIndex++) {
     const category = COPA2026_CATEGORIES[catIndex];
 
-    const { data: cat, error: catError } = await supabase
-      .from("sticker_categories")
-      .insert({
-        album_id: album.id,
-        name: category.name,
-        sort_order: catIndex,
-      })
-      .select()
-      .single();
+    let catId = existingCatMap.get(category.name);
 
-    if (catError) {
-      console.error(`Error inserting category ${category.name}:`, catError);
+    if (!catId) {
+      const { data: cat, error: catError } = await supabase
+        .from("sticker_categories")
+        .insert({ album_id: album.id, name: category.name, sort_order: catIndex })
+        .select()
+        .single();
+
+      if (catError) {
+        console.error(`  ✗ Category "${category.name}":`, catError.message);
+        continue;
+      }
+
+      catId = cat.id;
+      insertedCategories++;
+    }
+
+    const missing = category.stickers.filter(
+      (s, sIndex) => !existingStickerSet.has(`${catId}:${s.code}`)
+    );
+
+    if (missing.length === 0) {
+      skippedStickers += category.stickers.length;
       continue;
     }
 
-    const stickersToInsert = category.stickers.map((s, sIndex) => ({
-      category_id: cat.id,
-      code: s.code,
-      name: s.name,
-      sort_order: sIndex,
-    }));
-
-    const { error: stickerError } = await supabase
-      .from("stickers")
-      .insert(stickersToInsert);
+    const { error: stickerError } = await supabase.from("stickers").insert(
+      missing.map((s, i) => ({
+        category_id: catId,
+        code: s.code,
+        name: s.name,
+        sort_order: category.stickers.findIndex((x) => x.code === s.code),
+      }))
+    );
 
     if (stickerError) {
-      console.error(`Error inserting stickers for ${category.name}:`, stickerError);
+      console.error(`  ✗ Stickers for "${category.name}":`, stickerError.message);
     } else {
-      console.log(`  ✓ ${category.name} (${category.stickers.length} stickers)`);
+      console.log(`  ✓ ${category.name}: +${missing.length} stickers`);
+      insertedStickers += missing.length;
+      skippedStickers += category.stickers.length - missing.length;
     }
   }
 
-  console.log("Seed complete!");
+  console.log(`\nDone!`);
+  console.log(`  Categories inserted: ${insertedCategories}`);
+  console.log(`  Stickers inserted:   ${insertedStickers}`);
+  console.log(`  Stickers already OK: ${skippedStickers}`);
 }
 
 seed().catch(console.error);
