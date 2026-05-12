@@ -47,10 +47,12 @@ export default function StickerGrid({
       const catStickers = stickers.filter((s) => s.category_id === cat.id);
       const filtered = catStickers.filter((s) => {
         const cs = stickerMap.get(s.id);
+        const q = search.toLowerCase();
         const matchesSearch =
           !search ||
-          s.code.toLowerCase().includes(search.toLowerCase()) ||
-          s.name.toLowerCase().includes(search.toLowerCase());
+          s.code.toLowerCase().includes(q) ||
+          s.name.toLowerCase().includes(q) ||
+          cat.name.toLowerCase().includes(q);
 
         if (!matchesSearch) return false;
 
@@ -107,7 +109,7 @@ export default function StickerGrid({
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por número ou nome..."
+            placeholder="Buscar por número, nome ou país..."
             className="w-full px-3 py-2 text-sm bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
           />
         </div>
