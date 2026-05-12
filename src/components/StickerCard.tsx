@@ -61,7 +61,7 @@ export default function StickerCard({ sticker, collectionSticker, onToggle, onDu
       onPointerLeave={cancelLongPress}
       className={`
         relative flex flex-col items-center justify-center rounded-xl border-2 transition-all
-        select-none touch-manipulation
+        select-none touch-manipulation w-full aspect-[4/5] p-1 gap-0.5
         ${readOnly ? "cursor-default" : "cursor-pointer active:scale-95"}
         ${isOwned
           ? hasDuplicates
@@ -69,12 +69,14 @@ export default function StickerCard({ sticker, collectionSticker, onToggle, onDu
             : "bg-green-50 border-green-400 text-green-700"
           : "bg-gray-50 border-gray-200 text-gray-400"
         }
-        w-full aspect-square p-1
       `}
       title={sticker.name}
     >
-      <span className={`text-xs font-bold leading-tight text-center ${isOwned ? "" : "opacity-50"}`}>
+      <span className={`text-xs font-bold leading-none text-center ${isOwned ? "" : "opacity-50"}`}>
         {sticker.code}
+      </span>
+      <span className={`text-[10px] leading-tight text-center line-clamp-2 w-full ${isOwned ? "opacity-70" : "opacity-30"}`}>
+        {sticker.name}
       </span>
 
       {hasDuplicates && (
