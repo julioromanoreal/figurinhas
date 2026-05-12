@@ -39,11 +39,11 @@ export default function RegisterPage() {
     });
     if (error) {
       setError(error.message);
+      setLoading(false);
     } else {
       router.push("/collections/new");
       router.refresh();
     }
-    setLoading(false);
   };
 
   return (

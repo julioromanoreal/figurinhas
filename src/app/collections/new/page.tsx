@@ -43,10 +43,10 @@ export default function NewCollectionPage() {
 
     if (error) {
       setError(error.message);
+      setLoading(false);
     } else {
       router.push(`/collections/${data.id}`);
     }
-    setLoading(false);
   };
 
   return (

@@ -128,7 +128,7 @@ export default function CollectionSettingsPage({ params }: Props) {
     if (!confirm("Tem certeza que deseja excluir esta coleção? Esta ação não pode ser desfeita.")) return;
     setLoadingDelete(true);
     await supabase.from("collections").delete().eq("id", id);
-    router.push("/");
+    router.push("/collections/new");
   };
 
   if (!collection) return (

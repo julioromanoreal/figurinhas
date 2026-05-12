@@ -23,11 +23,11 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError(error.message);
+      setLoading(false);
     } else {
       router.push("/");
       router.refresh();
     }
-    setLoading(false);
   };
 
   const handleMagicLink = async () => {
