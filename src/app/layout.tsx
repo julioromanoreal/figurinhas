@@ -9,6 +9,11 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "default",
     title: "Figurinhas 2026",
+    startupImage: "/icon-512.png",
+  },
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
   },
   formatDetection: { telephone: false },
 };
