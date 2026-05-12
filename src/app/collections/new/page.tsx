@@ -97,6 +97,13 @@ export default function NewCollectionPage() {
             {loading ? "Criando..." : "Criar coleção"}
           </button>
         </form>
+
+        <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+          <p className="text-xs text-blue-700 text-center leading-relaxed">
+            <strong>Foi convidado para uma coleção?</strong><br />
+            Peça para a pessoa que te convidou acessar as configurações da coleção e adicionar o seu usuário. Depois é só entrar aqui de novo.
+          </p>
+        </div>
       </div>
     </div>
   );
