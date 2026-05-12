@@ -33,6 +33,7 @@ function CompareContent() {
   const [result, setResult] = useState<TradeResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentUrl, setCurrentUrl] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setCurrentUrl(window.location.origin);
@@ -166,10 +167,10 @@ function CompareContent() {
             )}
             <p className="text-xs text-gray-400 mt-3 break-all">{shareUrl}</p>
             <button
-              onClick={() => navigator.clipboard.writeText(shareUrl)}
-              className="mt-3 w-full border border-gray-200 text-gray-600 py-2 rounded-xl text-sm hover:bg-gray-50"
+              onClick={() => { navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+              className="mt-3 w-full border border-gray-200 text-gray-600 py-2 rounded-xl text-sm hover:bg-gray-50 transition-colors"
             >
-              Copiar link
+              {copied ? "✓ Copiado!" : "Copiar link"}
             </button>
           </div>
 

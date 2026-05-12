@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { CollectionCollaborator, Collection } from "@/lib/types";
+import Spinner from "@/components/Spinner";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -24,7 +25,10 @@ export default function CollectionSettingsPage({ params }: Props) {
   const [inviteCanEdit, setInviteCanEdit] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loadingSave, setLoadingSave] = useState(false);
+  const [loadingInvite, setLoadingInvite] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [loadingDelete, setLoadingDelete] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -56,21 +60,21 @@ export default function CollectionSettingsPage({ params }: Props) {
     e.preventDefault();
     setError("");
     setSuccess("");
-    setLoading(true);
+    setLoadingSave(true);
     const { error } = await supabase
       .from("collections")
       .update({ display_name: displayName })
       .eq("id", id);
     if (error) setError(error.message);
     else setSuccess("Nome atualizado!");
-    setLoading(false);
+    setLoadingSave(false);
   };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    setLoading(true);
+    setLoadingInvite(true);
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -80,13 +84,13 @@ export default function CollectionSettingsPage({ params }: Props) {
 
     if (!profile) {
       setError(`Usuário "${inviteUsername}" não encontrado.`);
-      setLoading(false);
+      setLoadingInvite(false);
       return;
     }
 
     if (profile.id === collection?.owner_id) {
       setError("Você não pode se convidar.");
-      setLoading(false);
+      setLoadingInvite(false);
       return;
     }
 
@@ -106,20 +110,23 @@ export default function CollectionSettingsPage({ params }: Props) {
         .eq("collection_id", id);
       setCollaborators(collabs ?? []);
     }
-    setLoading(false);
+    setLoadingInvite(false);
   };
 
   const handleRemoveCollaborator = async (userId: string) => {
+    setRemovingId(userId);
     await supabase
       .from("collection_collaborators")
       .delete()
       .eq("collection_id", id)
       .eq("user_id", userId);
     setCollaborators((prev) => prev.filter((c) => c.user_id !== userId));
+    setRemovingId(null);
   };
 
   const handleDeleteCollection = async () => {
     if (!confirm("Tem certeza que deseja excluir esta coleção? Esta ação não pode ser desfeita.")) return;
+    setLoadingDelete(true);
     await supabase.from("collections").delete().eq("id", id);
     router.push("/");
   };
@@ -151,10 +158,11 @@ export default function CollectionSettingsPage({ params }: Props) {
             />
             <button
               type="submit"
-              disabled={loading}
-              className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+              disabled={loadingSave}
+              className="bg-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
-              Salvar
+              {loadingSave && <Spinner />}
+              {loadingSave ? "Salvando..." : "Salvar"}
             </button>
           </form>
         </div>
@@ -187,10 +195,11 @@ export default function CollectionSettingsPage({ params }: Props) {
             </div>
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-green-600 text-white py-2 rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+              disabled={loadingInvite}
+              className="w-full bg-green-600 text-white py-2 rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
-              Adicionar colaborador
+              {loadingInvite && <Spinner />}
+              {loadingInvite ? "Adicionando..." : "Adicionar colaborador"}
             </button>
           </form>
 
@@ -214,9 +223,11 @@ export default function CollectionSettingsPage({ params }: Props) {
                   </div>
                   <button
                     onClick={() => handleRemoveCollaborator(collab.user_id)}
-                    className="text-red-400 hover:text-red-600 text-sm px-2 py-1"
+                    disabled={removingId === collab.user_id}
+                    className="text-red-400 hover:text-red-600 text-sm px-2 py-1 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-1"
                   >
-                    Remover
+                    {removingId === collab.user_id && <Spinner className="h-3 w-3 text-red-400" />}
+                    {removingId === collab.user_id ? "Removendo..." : "Remover"}
                   </button>
                 </div>
               ))}
@@ -228,9 +239,11 @@ export default function CollectionSettingsPage({ params }: Props) {
           <h2 className="font-semibold text-red-600 mb-2">Zona de perigo</h2>
           <button
             onClick={handleDeleteCollection}
-            className="w-full border border-red-200 text-red-500 py-2 rounded-xl text-sm font-medium hover:bg-red-50"
+            disabled={loadingDelete}
+            className="w-full border border-red-200 text-red-500 py-2 rounded-xl text-sm font-medium hover:bg-red-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
-            Excluir coleção
+            {loadingDelete && <Spinner className="h-4 w-4 text-red-400" />}
+            {loadingDelete ? "Excluindo..." : "Excluir coleção"}
           </button>
         </div>
       </div>

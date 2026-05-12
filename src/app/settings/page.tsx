@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Profile } from "@/lib/types";
+import Spinner from "@/components/Spinner";
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -16,6 +17,8 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingSignOut, setLoadingSignOut] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -53,8 +56,15 @@ export default function SettingsPage() {
   };
 
   const handleSignOut = async () => {
+    setLoadingSignOut(true);
     await supabase.auth.signOut();
     router.push("/login");
+  };
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(profile!.username);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (!profile) return (
@@ -90,9 +100,10 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-green-600 text-white py-2 rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+              className="w-full bg-green-600 text-white py-2 rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
-              Salvar
+              {loading && <Spinner />}
+              {loading ? "Salvando..." : "Salvar"}
             </button>
           </form>
         </div>
@@ -105,19 +116,21 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3">
             <span className="font-mono font-bold text-green-700">@{profile.username}</span>
             <button
-              onClick={() => navigator.clipboard.writeText(profile.username)}
-              className="ml-auto text-xs text-gray-400 hover:text-gray-600"
+              onClick={handleCopy}
+              className="ml-auto text-xs text-gray-400 hover:text-gray-600 transition-colors"
             >
-              Copiar
+              {copied ? "Copiado!" : "Copiar"}
             </button>
           </div>
         </div>
 
         <button
           onClick={handleSignOut}
-          className="w-full bg-white border border-red-200 text-red-500 py-3 rounded-2xl font-medium hover:bg-red-50 shadow-sm"
+          disabled={loadingSignOut}
+          className="w-full bg-white border border-red-200 text-red-500 py-3 rounded-2xl font-medium hover:bg-red-50 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
         >
-          Sair da conta
+          {loadingSignOut && <Spinner className="h-4 w-4 text-red-400" />}
+          {loadingSignOut ? "Saindo..." : "Sair da conta"}
         </button>
       </div>
     </div>

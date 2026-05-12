@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import StickerGrid from "@/components/StickerGrid";
 import type { Collection, StickerCategory, Sticker, CollectionSticker } from "@/lib/types";
 import Link from "next/link";
+import Spinner from "@/components/Spinner";
 
 interface Props {
   collection: Collection;
@@ -33,6 +34,7 @@ export default function CollectionClient({
   const [collectionStickers, setCollectionStickers] = useState<CollectionSticker[]>(initialCollectionStickers);
   const [saving, setSaving] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loadingSignOut, setLoadingSignOut] = useState(false);
 
   const totalOwned = collectionStickers.filter((cs) => cs.status === "owned").length;
   const progress = stickers.length > 0 ? (totalOwned / stickers.length) * 100 : 0;
@@ -119,6 +121,7 @@ export default function CollectionClient({
   }, [canEdit, collectionStickers, supabase]);
 
   const handleSignOut = async () => {
+    setLoadingSignOut(true);
     await supabase.auth.signOut();
     router.push("/login");
   };
@@ -201,9 +204,11 @@ export default function CollectionClient({
                   </Link>
                   <button
                     onClick={handleSignOut}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 text-red-500"
+                    disabled={loadingSignOut}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 text-red-500 disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    Sair
+                    {loadingSignOut && <Spinner className="h-3 w-3 text-red-400" />}
+                    {loadingSignOut ? "Saindo..." : "Sair"}
                   </button>
                 </div>
               )}

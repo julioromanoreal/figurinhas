@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import type { Album } from "@/lib/types";
+import Spinner from "@/components/Spinner";
 
 export default function NewCollectionPage() {
   const router = useRouter();
@@ -90,8 +91,9 @@ export default function NewCollectionPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
+            className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
           >
+            {loading && <Spinner />}
             {loading ? "Criando..." : "Criar coleção"}
           </button>
         </form>
