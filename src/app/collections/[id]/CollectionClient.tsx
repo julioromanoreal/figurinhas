@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import StickerGrid from "@/components/StickerGrid";
@@ -29,7 +29,7 @@ export default function CollectionClient({
   currentUserId,
   allCollections,
 }: Props) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const [collectionStickers, setCollectionStickers] = useState<CollectionSticker[]>(initialCollectionStickers);
   const [saving, setSaving] = useState(false);
@@ -65,7 +65,7 @@ export default function CollectionClient({
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [collection.id, supabase]);
+  }, [collection.id]); // supabase is memoized, stable reference
 
   const handleToggleSticker = useCallback(async (stickerId: string, current?: CollectionSticker) => {
     if (!canEdit) return;
