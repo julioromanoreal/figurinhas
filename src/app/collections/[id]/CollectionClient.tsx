@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import StickerGrid from "@/components/StickerGrid";
@@ -39,6 +39,16 @@ export default function CollectionClient({
   const totalOwned = collectionStickers.filter((cs) => cs.status === "owned").length;
   const progress = stickers.length > 0 ? (totalOwned / stickers.length) * 100 : 0;
 
+  const isSubscribed = useRef(false);
+
+  const refetchStickers = useCallback(async () => {
+    const { data } = await supabase
+      .from("collection_stickers")
+      .select("*")
+      .eq("collection_id", collection.id);
+    if (data) setCollectionStickers(data);
+  }, [collection.id, supabase]);
+
   useEffect(() => {
     const channel = supabase
       .channel(`collection:${collection.id}`)
@@ -52,7 +62,10 @@ export default function CollectionClient({
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setCollectionStickers((prev) => [...prev, payload.new as CollectionSticker]);
+            setCollectionStickers((prev) => {
+              if (prev.some((cs) => cs.id === payload.new.id)) return prev;
+              return [...prev, payload.new as CollectionSticker];
+            });
           } else if (payload.eventType === "UPDATE") {
             setCollectionStickers((prev) =>
               prev.map((cs) => cs.id === payload.new.id ? payload.new as CollectionSticker : cs)
@@ -62,10 +75,27 @@ export default function CollectionClient({
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          if (isSubscribed.current) {
+            refetchStickers();
+          }
+          isSubscribed.current = true;
+        }
+      });
 
     return () => { supabase.removeChannel(channel); };
-  }, [collection.id]); // supabase is memoized, stable reference
+  }, [collection.id, refetchStickers]); // supabase is memoized, stable reference
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refetchStickers();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [refetchStickers]);
 
   const handleToggleSticker = useCallback(async (stickerId: string, current?: CollectionSticker) => {
     if (!canEdit) return;
