@@ -43,7 +43,8 @@ export default async function CollectionPage({ params }: Props) {
     .from("stickers")
     .select("*")
     .in("category_id", (categories ?? []).map((c) => c.id))
-    .order("sort_order");
+    .order("sort_order")
+    .limit(2000);
 
   const { data: collectionStickers } = await supabase
     .from("collection_stickers")
