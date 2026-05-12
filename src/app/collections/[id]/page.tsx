@@ -33,18 +33,16 @@ export default async function CollectionPage({ params }: Props) {
   const hasAccess = isOwner || !!collaborator;
   if (!hasAccess) redirect("/collections/new");
 
-  const { data: categories } = await supabase
+  const { data: categoriesWithStickers } = await supabase
     .from("sticker_categories")
-    .select("*")
+    .select("*, stickers(*)")
     .eq("album_id", collection.album_id)
-    .order("sort_order");
-
-  const { data: stickers } = await supabase
-    .from("stickers")
-    .select("*")
-    .in("category_id", (categories ?? []).map((c) => c.id))
     .order("sort_order")
-    .limit(2000);
+    .order("sort_order", { referencedTable: "stickers" });
+
+  const categories = (categoriesWithStickers ?? []).map(({ stickers: _s, ...cat }) => cat);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const stickers = (categoriesWithStickers ?? []).flatMap((cat) => (cat.stickers as any[]) ?? []);
 
   const { data: collectionStickers } = await supabase
     .from("collection_stickers")
