@@ -19,6 +19,8 @@ interface Props {
   allCollections: { id: string; display_name: string }[];
 }
 
+type ShareMode = "all" | "owned" | "missing" | "duplicates";
+
 export default function CollectionClient({
   collection,
   categories,
@@ -34,6 +36,7 @@ export default function CollectionClient({
   const [collectionStickers, setCollectionStickers] = useState<CollectionSticker[]>(initialCollectionStickers);
   const [saving, setSaving] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [loadingSignOut, setLoadingSignOut] = useState(false);
 
   const totalOwned = collectionStickers.filter((cs) => cs.status === "owned").length;
@@ -150,13 +153,22 @@ export default function CollectionClient({
     setSaving(false);
   }, [canEdit, collectionStickers, supabase]);
 
-  const generateShareText = useCallback(() => {
+  const generateShareText = useCallback((mode: ShareMode) => {
+    const stickerMap = new Map(collectionStickers.map((cs) => [cs.sticker_id, cs]));
+    const totalDuplicates = collectionStickers.reduce((sum, cs) => sum + (cs.status === "owned" ? (cs.duplicate_count ?? 0) : 0), 0);
+    const getNum = (code: string) => code.split("-")[1] ?? code;
+
+    const modeLabel: Record<ShareMode, string> = {
+      all: "Lista completa",
+      owned: "Figurinhas que tenho",
+      missing: "Figurinhas que faltam",
+      duplicates: "Figurinhas repetidas",
+    };
+
     const lines: string[] = [];
     lines.push(`*${collection.display_name} - Copa do Mundo 2026*`);
-    const totalDuplicates = collectionStickers.reduce((sum, cs) => sum + (cs.status === "owned" ? (cs.duplicate_count ?? 0) : 0), 0);
+    lines.push(`_${modeLabel[mode]}_`);
     lines.push(`✅ Tenho: ${totalOwned}/${stickers.length} (${progress.toFixed(0)}%) | 🔄 Repetidas: ${totalDuplicates} | ❌ Faltam: ${stickers.length - totalOwned}`);
-
-    const stickerMap = new Map(collectionStickers.map((cs) => [cs.sticker_id, cs]));
 
     for (const cat of categories) {
       const catStickers = stickers
@@ -165,18 +177,19 @@ export default function CollectionClient({
       if (catStickers.length === 0) continue;
 
       const owned = catStickers.filter((s) => stickerMap.get(s.id)?.status === "owned");
-      const missing = catStickers.filter((s) => {
-        const cs = stickerMap.get(s.id);
-        return !cs || cs.status === "missing";
-      });
+      const missing = catStickers.filter((s) => { const cs = stickerMap.get(s.id); return !cs || cs.status === "missing"; });
       const duplicates = owned.filter((s) => (stickerMap.get(s.id)?.duplicate_count ?? 0) > 0);
 
-      const getNum = (code: string) => code.split("-")[1] ?? code;
-
       const catLines: string[] = [];
-      if (owned.length > 0) catLines.push(`✅ ${owned.map((s) => getNum(s.code)).join(", ")}`);
-      if (missing.length > 0) catLines.push(`❌ ${missing.map((s) => getNum(s.code)).join(", ")}`);
-      if (duplicates.length > 0) catLines.push(`🔄 ${duplicates.map((s) => `${getNum(s.code)} (x${stickerMap.get(s.id)!.duplicate_count})`).join(", ")}`);
+      if (mode === "all" || mode === "owned") {
+        if (owned.length > 0) catLines.push(`✅ ${owned.map((s) => getNum(s.code)).join(", ")}`);
+      }
+      if (mode === "all" || mode === "missing") {
+        if (missing.length > 0) catLines.push(`❌ ${missing.map((s) => getNum(s.code)).join(", ")}`);
+      }
+      if (mode === "all" || mode === "duplicates") {
+        if (duplicates.length > 0) catLines.push(`🔄 ${duplicates.map((s) => `${getNum(s.code)} (x${stickerMap.get(s.id)!.duplicate_count})`).join(", ")}`);
+      }
 
       if (catLines.length > 0) {
         lines.push(`\n*${cat.name}*`);
@@ -187,15 +200,15 @@ export default function CollectionClient({
     return lines.join("\n");
   }, [categories, stickers, collectionStickers, collection.display_name, totalOwned, progress]);
 
-  const handleShare = useCallback(async () => {
-    const text = generateShareText();
+  const handleShare = useCallback(async (mode: ShareMode) => {
+    const text = generateShareText(mode);
+    setShareModalOpen(false);
     if (navigator.share) {
       await navigator.share({ text });
     } else {
       await navigator.clipboard.writeText(text);
       alert("Lista copiada para a área de transferência!");
     }
-    setMenuOpen(false);
   }, [generateShareText]);
 
   const handleSignOut = async () => {
@@ -273,7 +286,7 @@ export default function CollectionClient({
                     🔄 QR Code para troca
                   </Link>
                   <button
-                    onClick={handleShare}
+                    onClick={() => { setMenuOpen(false); setShareModalOpen(true); }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50"
                   >
                     📤 Compartilhar lista
@@ -327,6 +340,37 @@ export default function CollectionClient({
           readOnly={!canEdit}
         />
       </main>
+
+      {shareModalOpen && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setShareModalOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-xl p-5 space-y-3">
+            <h2 className="font-semibold text-gray-900 text-center mb-1">O que deseja compartilhar?</h2>
+            {(
+              [
+                { mode: "all", label: "📋 Lista completa" },
+                { mode: "owned", label: "✅ Somente as que tenho" },
+                { mode: "missing", label: "❌ Somente as que faltam" },
+                { mode: "duplicates", label: "🔄 Somente as repetidas" },
+              ] as { mode: ShareMode; label: string }[]
+            ).map(({ mode, label }) => (
+              <button
+                key={mode}
+                onClick={() => handleShare(mode)}
+                className="w-full text-left px-4 py-3 rounded-xl bg-gray-50 hover:bg-gray-100 text-sm font-medium text-gray-800 transition-colors"
+              >
+                {label}
+              </button>
+            ))}
+            <button
+              onClick={() => setShareModalOpen(false)}
+              className="w-full text-center py-3 text-sm text-gray-400 hover:text-gray-600"
+            >
+              Cancelar
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
