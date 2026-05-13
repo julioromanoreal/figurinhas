@@ -13,17 +13,26 @@ export default function SettingsPage() {
   const supabase = createClient();
   const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [userEmail, setUserEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingSignOut, setLoadingSignOut] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
+  const [loadingPassword, setLoadingPassword] = useState(false);
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
+
+      setUserEmail(user.email ?? "");
 
       const { data } = await supabase
         .from("profiles")
@@ -53,6 +62,43 @@ export default function SettingsPage() {
     if (error) setError(error.message);
     else setSuccess("Perfil atualizado!");
     setLoading(false);
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess("");
+
+    if (newPassword.length < 6) {
+      setPasswordError("A nova senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("As senhas não coincidem.");
+      return;
+    }
+
+    setLoadingPassword(true);
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: userEmail,
+      password: currentPassword,
+    });
+    if (signInError) {
+      setPasswordError("Senha atual incorreta.");
+      setLoadingPassword(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setPasswordError(error.message);
+    } else {
+      setPasswordSuccess("Senha alterada com sucesso!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setLoadingPassword(false);
   };
 
   const handleSignOut = async () => {
@@ -122,6 +168,56 @@ export default function SettingsPage() {
               {copied ? "Copiado!" : "Copiar"}
             </button>
           </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+          <h2 className="font-semibold text-gray-900 mb-4">Alterar senha</h2>
+          <form onSubmit={handleChangePassword} className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Senha atual</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                placeholder="••••••••"
+                required
+                minLength={6}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            {passwordError && <p className="text-red-500 text-sm bg-red-50 rounded-lg px-3 py-2">{passwordError}</p>}
+            {passwordSuccess && <p className="text-green-600 text-sm bg-green-50 rounded-lg px-3 py-2">{passwordSuccess}</p>}
+            <button
+              type="submit"
+              disabled={loadingPassword}
+              className="w-full bg-green-600 text-white py-2 rounded-xl text-sm font-medium hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              {loadingPassword && <Spinner />}
+              {loadingPassword ? "Salvando..." : "Alterar senha"}
+            </button>
+          </form>
         </div>
 
         <button
