@@ -150,6 +150,54 @@ export default function CollectionClient({
     setSaving(false);
   }, [canEdit, collectionStickers, supabase]);
 
+  const generateShareText = useCallback(() => {
+    const lines: string[] = [];
+    lines.push(`*${collection.display_name} - Copa do Mundo 2026*`);
+    const totalDuplicates = collectionStickers.reduce((sum, cs) => sum + (cs.status === "owned" ? (cs.duplicate_count ?? 0) : 0), 0);
+    lines.push(`✅ Tenho: ${totalOwned}/${stickers.length} (${progress.toFixed(0)}%) | 🔄 Repetidas: ${totalDuplicates} | ❌ Faltam: ${stickers.length - totalOwned}`);
+
+    const stickerMap = new Map(collectionStickers.map((cs) => [cs.sticker_id, cs]));
+
+    for (const cat of categories) {
+      const catStickers = stickers
+        .filter((s) => s.category_id === cat.id)
+        .sort((a, b) => a.sort_order - b.sort_order);
+      if (catStickers.length === 0) continue;
+
+      const owned = catStickers.filter((s) => stickerMap.get(s.id)?.status === "owned");
+      const missing = catStickers.filter((s) => {
+        const cs = stickerMap.get(s.id);
+        return !cs || cs.status === "missing";
+      });
+      const duplicates = owned.filter((s) => (stickerMap.get(s.id)?.duplicate_count ?? 0) > 0);
+
+      const getNum = (code: string) => code.split("-")[1] ?? code;
+
+      const catLines: string[] = [];
+      if (owned.length > 0) catLines.push(`✅ ${owned.map((s) => getNum(s.code)).join(", ")}`);
+      if (missing.length > 0) catLines.push(`❌ ${missing.map((s) => getNum(s.code)).join(", ")}`);
+      if (duplicates.length > 0) catLines.push(`🔄 ${duplicates.map((s) => `${getNum(s.code)} (x${stickerMap.get(s.id)!.duplicate_count})`).join(", ")}`);
+
+      if (catLines.length > 0) {
+        lines.push(`\n*${cat.name}*`);
+        lines.push(...catLines);
+      }
+    }
+
+    return lines.join("\n");
+  }, [categories, stickers, collectionStickers, collection.display_name, totalOwned, progress]);
+
+  const handleShare = useCallback(async () => {
+    const text = generateShareText();
+    if (navigator.share) {
+      await navigator.share({ text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      alert("Lista copiada para a área de transferência!");
+    }
+    setMenuOpen(false);
+  }, [generateShareText]);
+
   const handleSignOut = async () => {
     setLoadingSignOut(true);
     await supabase.auth.signOut();
@@ -224,6 +272,12 @@ export default function CollectionClient({
                   >
                     🔄 QR Code para troca
                   </Link>
+                  <button
+                    onClick={handleShare}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50"
+                  >
+                    📤 Compartilhar lista
+                  </button>
                   <hr className="border-gray-100" />
                   <Link
                     href="/settings"
