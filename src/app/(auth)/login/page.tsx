@@ -91,12 +91,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-gray-700">Senha</label>
-              <Link href="/forgot-password" className="text-xs text-green-600 hover:underline">
-                Esqueci minha senha
-              </Link>
-            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
             <input
               type="password"
               value={password}
@@ -148,7 +143,13 @@ export default function LoginPage() {
           {loading ? "Enviando..." : "Entrar com link mágico"}
         </button>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-sm mt-4">
+          <Link href="/forgot-password" className="text-gray-500 hover:text-green-600 hover:underline">
+            Esqueci minha senha
+          </Link>
+        </p>
+
+        <p className="text-center text-sm text-gray-500 mt-3">
           Não tem conta?{" "}
           <Link href="/register" className="text-green-600 font-medium hover:underline">
             Criar conta
